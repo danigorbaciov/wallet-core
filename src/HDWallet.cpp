@@ -11,9 +11,10 @@
 #include "Bitcoin/SegwitAddress.h"
 #include "Bitcoin/CashAddress.h"
 #include "Coin.h"
-#include "Decred/Address.h"
-#include "Ripple/Address.h"
-#include "Zcash/TAddress.h"
+//#include "Decred/Address.h"
+//#include "Ripple/Address.h"
+//#include "Zcash/TAddress.h"
+#include "HexCoding.h"
 
 #include <TrezorCrypto/bip32.h>
 #include <TrezorCrypto/bip39.h>
@@ -21,6 +22,7 @@
 #include <TrustWalletCore/TWHRP.h>
 
 #include <array>
+#include <iostream>
 
 using namespace TW;
 
@@ -68,15 +70,36 @@ HDWallet::~HDWallet() {
 
 PrivateKey HDWallet::getMasterKey(TWCurve curve) const {
     auto node = getMasterNode(*this, curve);
+    /*
+    if (curve == TWCurve::TWCurveED25519Cardano) {
+        auto data = Data(node.private_key, node.private_key + 64);
+        std::cerr << "getMasterKey data " << TW::hex(data) << std::endl;
+        return PrivateKey(data);
+    }
+    */
     auto data = Data(node.private_key, node.private_key + PrivateKey::size);
+    return PrivateKey(data);
+}
+
+PrivateKey HDWallet::getMasterKeyExtension(TWCurve curve) const {
+    auto node = getMasterNode(*this, curve);
+    auto data = Data(node.private_key_extension, node.private_key_extension + PrivateKey::size);
     return PrivateKey(data);
 }
 
 PrivateKey HDWallet::getKey(const DerivationPath& derivationPath) const {
     const auto curve = TWCoinTypeCurve(derivationPath.coin());
+    std::cerr << "derivationPath.coin() " << derivationPath.coin() << " curve " << (int)curve << std::endl;
     auto node = getNode(*this, curve, derivationPath);
-    auto data = Data(node.private_key, node.private_key + PrivateKey::size);
-    return PrivateKey(data);
+    if (curve == TWCurve::TWCurveED25519Cardano) {
+        auto pkData = Data(node.private_key, node.private_key + PrivateKey::size);
+        auto extData = Data(node.private_key_extension, node.private_key_extension + PrivateKey::size);
+        auto chainCode = Data(node.chain_code, node.chain_code + PrivateKey::size);
+        return PrivateKey(pkData, extData, chainCode);
+    } else {
+        auto data = Data(node.private_key, node.private_key + PrivateKey::size);
+        return PrivateKey(data);
+    }
 }
 
 std::string HDWallet::deriveAddress(TWCoinType coin) const {
@@ -135,6 +158,8 @@ std::optional<PublicKey> HDWallet::getPublicKeyFromExtended(const std::string &e
         return PublicKey(Data(node.public_key, node.public_key + 32), TWPublicKeyTypeCURVE25519);
     case TWCurveNIST256p1:
         return PublicKey(Data(node.public_key, node.public_key + 33), TWPublicKeyTypeNIST256p1);
+    case TWCurveED25519Cardano: // TODO
+        return PublicKey(Data(node.public_key, node.public_key + 33), TWPublicKeyTypeED25519);
     }
 }
 
@@ -209,14 +234,28 @@ bool deserialize(const std::string& extended, TWCurve curve, Hash::Hasher hasher
 HDNode getNode(const HDWallet& wallet, TWCurve curve, const DerivationPath& derivationPath) {
     auto node = getMasterNode(wallet, curve);
     for (auto& index : derivationPath.indices) {
-        hdnode_private_ckd(&node, index.derivationIndex());
+        if (curve == TWCurveED25519Cardano) {
+            hdnode_private_ckd_cardano(&node, index.derivationIndex());
+        } else {
+            hdnode_private_ckd(&node, index.derivationIndex());
+        }
     }
     return node;
 }
 
 HDNode getMasterNode(const HDWallet& wallet, TWCurve curve) {
     auto node = HDNode();
-    hdnode_from_seed(wallet.seed.data(), HDWallet::seedSize, curveName(curve), &node);
+    if (curve == TWCurveED25519Cardano) {
+        // gerenrate entropy, don't use seed
+        Data entropyRaw(32 + 1);
+        auto entropyBits = mnemonic_to_entropy(wallet.mnemonic.c_str(), entropyRaw.data());
+        Data entropy = data(entropyRaw.data(), entropyBits / 8);
+        std::cerr << "entropy " << entropyBits << " " << hex(entropy) << std::endl;
+
+        hdnode_from_seed_cardano((const uint8_t*)"", 0, entropy.data(), entropy.size(), &node);
+    } else {
+        hdnode_from_seed(wallet.seed.data(), HDWallet::seedSize, curveName(curve), &node);
+    }
     return node;
 }
 

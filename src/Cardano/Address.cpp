@@ -84,13 +84,13 @@ Address::Address(const std::string& string) {
     }
 }
 
-Address::Address(const Data& xPublicKey) {
+Address::Address(const PublicKey& publicKey) {
     // input is xpub, 64-byte
-    if (xPublicKey.size() != 64) {
-        throw invalid_argument("xbub wrong length");
+    if (publicKey.type != TWPublicKeyTypeED25519Ext) {
+        throw std::invalid_argument("Invalid public key type");
     }
     type = 0; // public key
-    root = keyHash(xPublicKey);
+    root = keyHash(publicKey.bytes);
     // address attributes: empty map for V2, for V1 encrypted derivation path
     Cbor::Encode emptyMap = Cbor::Encode().addMap(vector<pair<Cbor::Encode, Cbor::Encode>>{});
     attrs = emptyMap.getData();

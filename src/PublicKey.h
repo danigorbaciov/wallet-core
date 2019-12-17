@@ -26,6 +26,8 @@ class PublicKey {
     /// The number of bytes in a ed25519 public key.
     static const size_t ed25519Size = 32;
 
+    static const size_t ed25519ExtSize = 64;
+
     /// The number of bytes in a secp256k1 and nist256p1 extended public key.
     static const size_t secp256k1ExtendedSize = 65;
 
@@ -58,6 +60,8 @@ class PublicKey {
         case TWPublicKeyTypeSECP256k1Extended:
         case TWPublicKeyTypeNIST256p1Extended:
             return size == secp256k1ExtendedSize && data[0] == 0x04;
+        case TWPublicKeyTypeED25519Ext:
+            return size == ed25519ExtSize;
         default:
             return false;
         }
@@ -97,6 +101,9 @@ class PublicKey {
                 std::copy(std::begin(data), std::end(data), std::back_inserter(bytes));
             }
             break;
+        case TWPublicKeyTypeED25519Ext:
+            bytes.reserve(ed25519ExtSize);
+            std::copy(std::begin(data), std::end(data), std::back_inserter(bytes));
         }
     }
 

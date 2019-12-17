@@ -23,6 +23,8 @@ class PrivateKey {
 
     /// The private key bytes.
     std::array<uint8_t, size> bytes;
+    std::array<uint8_t, size> extBytes;
+    std::array<uint8_t, size> chainBytes;
 
     /// Determines if a collection of bytes makes a valid private key.
     template <typename T>
@@ -33,7 +35,7 @@ class PrivateKey {
         }
 
         // Check for zero address
-        for (size_t i = 0; i < size; i += 1) {
+        for (size_t i = 0; i < size; ++i) {
             if (data[i] != 0) {
                 return true;
             }
@@ -52,6 +54,17 @@ class PrivateKey {
             throw std::invalid_argument("Invalid private key data");
         }
         std::copy(std::begin(data), std::end(data), std::begin(bytes));
+    }
+
+    /// Initializes an EXTTTTTT private key with a collection of bytes.
+    template <typename T>
+    explicit PrivateKey(const T& data, const T& ext, const T& chainCode) {
+        if (!isValid(data) || !isValid(data) || !isValid(chainCode)) {
+            throw std::invalid_argument("Invalid private key data");
+        }
+        std::copy(std::begin(data), std::end(data), std::begin(bytes));
+        std::copy(std::begin(ext), std::end(ext), std::begin(extBytes));
+        std::copy(std::begin(chainCode), std::end(chainCode), std::begin(chainBytes));
     }
 
     /// Initializes a private key with a static array of bytes.

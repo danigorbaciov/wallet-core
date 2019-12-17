@@ -7,6 +7,7 @@
 #include "PrivateKey.h"
 
 #include "PublicKey.h"
+#include "HexCoding.h"
 
 #include <TrezorCrypto/bignum.h>
 #include <TrezorCrypto/ecdsa.h>
@@ -17,6 +18,8 @@
 #include <TrezorCrypto/schnorr.h>
 #include <TrezorCrypto/secp256k1.h>
 #include <TrezorCrypto/sodium/keypair.h>
+
+#include <iostream>
 
 using namespace TW;
 
@@ -85,6 +88,14 @@ PublicKey PrivateKey::getPublicKey(TWPublicKeyType type) const {
     case TWPublicKeyTypeED25519Blake2b:
         result.resize(PublicKey::ed25519Size);
         ed25519_publickey_blake2b(bytes.data(), result.data());
+        break;
+    case TWPublicKeyTypeED25519Ext:
+        result.resize(PublicKey::ed25519ExtSize);
+        std::cerr << "getPublicKey ED25519Ext " << hex(data(bytes.data(), bytes.size())) << " " << hex(data(extBytes.data(), extBytes.size())) << std::endl;
+        ed25519_publickey_ext(bytes.data(), extBytes.data(), result.data());
+        //append(result, data(chainBytes.data(), chainBytes.size()));
+        std::copy(chainBytes.begin(), chainBytes.end(), result.begin() + 32);
+        std::cerr << "  result " << result.size() << " " << hex(result) << std::endl;
         break;
     case TWPublicKeyTypeCURVE25519:
         result.resize(PublicKey::ed25519Size);

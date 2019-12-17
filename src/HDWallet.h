@@ -61,6 +61,9 @@ class HDWallet {
     /// Returns master key.
     PrivateKey getMasterKey(TWCurve curve) const;
 
+    /// Returns the master private key extension (32 byte).
+    PrivateKey getMasterKeyExtension(TWCurve curve) const;
+
     /// Returns the private key at the given derivation path.
     PrivateKey getKey(const DerivationPath& derivationPath) const;
 
